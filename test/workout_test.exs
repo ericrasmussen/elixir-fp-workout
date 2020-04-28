@@ -72,4 +72,10 @@ defmodule WorkoutTest do
     assert res == 5
   end
 
+  test "split_by can separate a list in two using a predicate" do
+    res = Workout.split_by([1, 2, 3, 4], fn(a) -> a < 3 end)
+    expected = { [1, 2], [3, 4] }
+    assert res == expected
+  end
+
 end

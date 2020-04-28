@@ -28,20 +28,18 @@ defmodule Workout do
   # see the tests for more examples
   @spec fold(b(), list(a()), (a(), b() -> b())) :: b()
   def fold(accum, [], _func) do
-    accum
+    []
   end
 
   def fold(accum, [ fst | rst ], func) do
-    fst
-    |> func.(accum)
-    |> fold(rst, func)
+    accum
   end
 
   # some of the following functions benefit from having an easy way to
   # append an item to a list.
   @spec append(a(), list(a())) :: list(a())
   def append(x, items) do
-    items ++ List.wrap(x)
+    []
   end
 
   # map should be defined in terms of fold!
@@ -110,15 +108,7 @@ defmodule Workout do
   # where `pred(element)` is true, and the second list contains the rest
   @spec split_by(list(a()), (a() -> boolean())) :: { list(a()), list(a()) }
   def split_by(items, pred) do
-    splitter = fn(x, { left, right }) ->
-      if pred.(x) do
-        { append(x, left), right }
-      else
-        { left, append(x, right) }
-      end
-    end
-
-    fold({[], []}, items, splitter)
+    { [], [] }
   end
 
   # this should be defined in terms of either fold or filter. don't worry about

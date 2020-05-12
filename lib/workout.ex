@@ -12,7 +12,7 @@ defmodule Workout do
   elixir, not to say it's the best possible way to write these functions for
   every use case.
 
-  Also note that dialyzer does not support type vars, so types a() and b() in
+  Also note that dialyzer does not support type vars, so types a and b in
   the examples below can be exchanged freely to make all kinds of nonsense specs
   that will still pass the checks in `mix dialyzer`. Please pretend, however,
   that they are distinct type vars and not interchangeable.
@@ -28,18 +28,20 @@ defmodule Workout do
   # see the tests for more examples
   @spec fold(b, list(a), (a, b -> b)) :: b
   def fold(accum, [], _func) do
-    []
+    accum
   end
 
   def fold(accum, [ fst | rst ], func) do
-    accum
+    fst
+    |> func.(accum)
+    |> fold(rst, func)
   end
 
   # some of the following functions benefit from having an easy way to
   # append an item to a list.
   @spec append(a, list(a)) :: list(a)
   def append(x, items) do
-    []
+    items ++ List.wrap(x)
   end
 
   # map should be defined in terms of fold!
@@ -48,14 +50,25 @@ defmodule Workout do
   # to each element (e.g. [2, 3, 4])
   @spec map(list(a), (a -> b)) :: list(b)
   def map(items, func) do
-    items
+    combine = fn(item, accum) ->
+      item
+      |> func.()
+      |> append(accum)
+    end
+    fold([], items, combine)
   end
 
   # filter should also be defined in terms of fold! it's a theme!
   # no I don't know why I'm still using exclamations!
   @spec filter(list(a), (a -> boolean)) :: list(a)
   def filter(items, pred) do
-    items
+    combine = fn(item, accum) ->
+      cond do
+        pred.(item) -> append(item, accum)
+        true        -> accum
+      end
+    end
+    fold([], items, combine)
   end
 
   # you can try defining `any` in terms of `filter` or `all`.
@@ -63,7 +76,10 @@ defmodule Workout do
   # given `items` list, else false
   @spec any(list(a), (a -> boolean)) :: boolean
   def any(items, pred) do
-    true
+    case filter(items, pred) do
+      [] -> false
+      _  -> true
+    end
   end
 
   # there are also mutiple ways to define `all`. you can try defining it in
@@ -71,7 +87,7 @@ defmodule Workout do
   # `item` in the given list `items`, else false
   @spec all(list(a), (a -> boolean)) :: boolean
   def all(items, pred) do
-    true
+    not any(items, fn(a) -> not pred.(a) end)
   end
 
 
@@ -79,36 +95,46 @@ defmodule Workout do
   # given list. this should be defined in terms of `fold`.
   @spec max(list(a)) :: a
   def max([]) do
-    []
+    nil
   end
 
   def max([fst | rst]) do
-    fst
+    comp = fn(a, b) -> if a > b, do: a, else: b end
+    fold(fst, rst, comp)
   end
 
   # min should return the smallest item (using the built-in < operator) in a
   # given list. this should be defined in terms of `fold`.
   @spec min(list(a)) :: a
   def min([]) do
-    []
+    nil
   end
 
   def min([fst | rst]) do
-    fst
+    comp = fn(a, b) -> if a < b, do: a, else: b end
+    fold(fst, rst, comp)
   end
 
   # `len` should count the number of items in the given list. this should be
   # defined in terms of `fold`.
-  @spec len(list(a)) :: integer
+  @spec len(list(a)) :: integer()
   def len(items) do
-    0
+    fold(0, items, fn(_, count) -> count + 1 end)
   end
 
   # splits one list into two. the first list contains all of the elements
   # where `pred(element)` is true, and the second list contains the rest
   @spec split_by(list(a), (a -> boolean)) :: { list(a), list(a) }
   def split_by(items, pred) do
-    { [], [] }
+    splitter = fn(x, {left, right}) ->
+      if pred.(x) do
+        {append(x, left), right}
+      else
+        {left, append(x, right)}
+      end
+    end
+
+    fold({[], []}, items, splitter)
   end
 
   # this should be defined in terms of either fold or filter. don't worry about
@@ -116,7 +142,11 @@ defmodule Workout do
   # [1, 3, 2], it should be sorted as [1, 2, 3])
   @spec insertion_sort(list(a)) :: list(a)
   def insertion_sort(items) do
-    []
-  end
+    insert = fn(x, accum) ->
+      {less, more} = split_by(accum, fn(a) -> a < x end)
+      less ++ [x] ++ more
+    end
 
+    fold([], items, insert)
+  end
 end
